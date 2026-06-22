@@ -1,47 +1,39 @@
-from guardrail import Guardrail, EndpointTraffic
-import pytest
-from datetime import datetime, timedelta
+import json
+from guardrail import Guardrail, APIKey
 
-@pytest.fixture
-def guardrail():
-    return Guardrail({})
+def test_register_api_key():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    assert len(guardrail.api_keys) == 1
 
-def test_add_traffic(guardrail):
-    guardrail.add_traffic('/api/endpoint', 10)
-    assert len(guardrail.traffic_data['/api/endpoint']) == 1
+def test_register_api_key_duplicate():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    try:
+        guardrail.register_api_key("key1", "GCP")
+        assert False
+    except ValueError as e:
+        assert str(e) == "API key already registered"
 
-def test_analyze_traffic(guardrail):
-    guardrail.add_traffic('/api/endpoint', 10)
-    guardrail.add_traffic('/api/endpoint', 20)
-    guardrail.load_thresholds('{"/api/endpoint": {"baseline": 10, "threshold": 150}}')
-    alerts = guardrail.analyze_traffic()
-    assert len(alerts) == 1
-    assert alerts[0].endpoint == '/api/endpoint'
-    assert alerts[0].count == 30
-    assert alerts[0].baseline == 10
+def test_validate_connectivity():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    assert guardrail.validate_connectivity("key1")
 
-def test_analyze_traffic_no_alert(guardrail):
-    guardrail.add_traffic('/api/endpoint', 10)
-    guardrail.load_thresholds('{"/api/endpoint": {"baseline": 10, "threshold": 150}}')
-    alerts = guardrail.analyze_traffic()
-    assert len(alerts) == 0
+def test_monitor_api_key():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    guardrail.monitor_api_key("key1")
+    assert guardrail.get_api_key_status("key1") == "active"
 
-def test_load_thresholds(guardrail):
-    guardrail.load_thresholds('{"/api/endpoint": {"baseline": 10, "threshold": 150}}')
-    assert guardrail.thresholds == {"/api/endpoint": {"baseline": 10, "threshold": 150}}
+def test_get_api_key_status():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    assert guardrail.get_api_key_status("key1") == "protected"
 
-def test_save_thresholds(guardrail):
-    guardrail.load_thresholds('{"/api/endpoint": {"baseline": 10, "threshold": 150}}')
-    assert guardrail.save_thresholds() == '{"/api/endpoint": {"baseline": 10, "threshold": 150}}'
-
-def test_rolling_window(guardrail):
-    guardrail.add_traffic('/api/endpoint', 10)
-    guardrail.add_traffic('/api/endpoint', 20)
-    rolling_window = guardrail._get_rolling_window(guardrail.traffic_data['/api/endpoint'])
-    assert rolling_window == 30
-
-def test_rolling_window_expired(guardrail):
-    guardrail.add_traffic('/api/endpoint', 10)
-    guardrail.traffic_data['/api/endpoint'][0] = (datetime.now() - timedelta(minutes=10), 10)
-    rolling_window = guardrail._get_rolling_window(guardrail.traffic_data['/api/endpoint'])
-    assert rolling_window == 0
+def test_to_json():
+    guardrail = Guardrail()
+    guardrail.register_api_key("key1", "AWS")
+    guardrail.register_api_key("key2", "GCP")
+    data = json.loads(guardrail.to_json())
+    assert len(data["api_keys"]) == 2

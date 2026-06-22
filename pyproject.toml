@@ -6,6 +6,7 @@ build-backend = "poetry.masonry.api"
 name = "guardrail"
 version = "0.1.0"
 description = ""
+authors = ["Your Name"]
 
 [tool.poetry.dependencies]
 python = "^3.8"

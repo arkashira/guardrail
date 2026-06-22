@@ -1,39 +1,41 @@
 import json
 from dataclasses import dataclass
-from datetime import datetime, timedelta
-from collections import defaultdict
+from typing import List, Dict
 
 @dataclass
-class EndpointTraffic:
-    endpoint: str
-    count: int
-    baseline: int
+class APIKey:
+    key: str
+    service: str
+    status: str = "protected"
 
 class Guardrail:
-    def __init__(self, thresholds):
-        self.thresholds = thresholds
-        self.traffic_data = defaultdict(list)
+    def __init__(self):
+        self.api_keys = {}
 
-    def add_traffic(self, endpoint, count):
-        self.traffic_data[endpoint].append((datetime.now(), count))
+    def register_api_key(self, key: str, service: str) -> None:
+        if key in self.api_keys:
+            raise ValueError("API key already registered")
+        self.api_keys[key] = APIKey(key, service)
 
-    def analyze_traffic(self):
-        alerts = []
-        for endpoint, traffic in self.traffic_data.items():
-            baseline = self.thresholds.get(endpoint, {}).get('baseline', 0)
-            threshold = self.thresholds.get(endpoint, {}).get('threshold', 150)
-            rolling_window = self._get_rolling_window(traffic)
-            if rolling_window and rolling_window > baseline * threshold / 100:
-                alerts.append(EndpointTraffic(endpoint, rolling_window, baseline))
-        return alerts
+    def validate_connectivity(self, key: str) -> bool:
+        # Simulate connectivity validation
+        return key in self.api_keys
 
-    def _get_rolling_window(self, traffic):
-        now = datetime.now()
-        rolling_window = [count for timestamp, count in traffic if (now - timestamp) < timedelta(minutes=5)]
-        return sum(rolling_window) if rolling_window else 0
+    def monitor_api_key(self, key: str) -> None:
+        if key not in self.api_keys:
+            raise ValueError("API key not registered")
+        self.api_keys[key].status = "active"
 
-    def load_thresholds(self, json_data):
-        self.thresholds = json.loads(json_data)
+    def get_api_key_status(self, key: str) -> str:
+        if key not in self.api_keys:
+            raise ValueError("API key not registered")
+        return self.api_keys[key].status
 
-    def save_thresholds(self):
-        return json.dumps(self.thresholds)
+    def to_json(self) -> str:
+        data = {
+            "api_keys": [
+                {"key": key, "service": api_key.service, "status": api_key.status}
+                for key, api_key in self.api_keys.items()
+            ]
+        }
+        return json.dumps(data)

@@ -1,11 +1,9 @@
 # Guardrail
-Abuse Detection Engine
-
+Guardrail is a system for registering and monitoring API keys.
 ## Usage
-1. Create an instance of the `Guardrail` class.
-2. Add traffic data using the `add_traffic` method.
-3. Analyze traffic using the `analyze_traffic` method.
-4. Load and save thresholds using the `load_thresholds` and `save_thresholds` methods.
-
-## Testing
-Run tests using `pytest`.
+1. Create a `Guardrail` instance.
+2. Register API keys using `register_api_key`.
+3. Validate connectivity using `validate_connectivity`.
+4. Monitor API keys using `monitor_api_key`.
+5. Get API key status using `get_api_key_status`.
+6. Serialize data to JSON using `to_json`.
