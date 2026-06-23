@@ -5,7 +5,7 @@ build-backend = "poetry.masonry.api"
 [tool.poetry]
 name = "guardrail"
 version = "0.1.0"
-description = ""
+description = "Rate limiting and circuit breaking library"
 authors = ["Your Name"]
 
 [tool.poetry.dependencies]

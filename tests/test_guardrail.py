@@ -1,39 +1,35 @@
-import json
-from guardrail import Guardrail, APIKey
+import time
+import pytest
+from guardrail import Guardrail, Request
 
-def test_register_api_key():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    assert len(guardrail.api_keys) == 1
+def test_rate_limiting():
+    guardrail = Guardrail(threshold=5, cooldown=10, max_failures=3)
+    for _ in range(5):
+        guardrail.handle_request(Request(time.time()))
+    assert guardrail.is_rate_limited()
 
-def test_register_api_key_duplicate():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    try:
-        guardrail.register_api_key("key1", "GCP")
-        assert False
-    except ValueError as e:
-        assert str(e) == "API key already registered"
+def test_circuit_breaker():
+    guardrail = Guardrail(threshold=5, cooldown=10, max_failures=3)
+    for _ in range(6):  # exceed threshold
+        guardrail.handle_request(Request(time.time()))
+    assert guardrail.is_circuit_open()
 
-def test_validate_connectivity():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    assert guardrail.validate_connectivity("key1")
+def test_recover():
+    guardrail = Guardrail(threshold=5, cooldown=10, max_failures=3)
+    guardrail.circuit_open = True
+    guardrail.recover()
+    assert not guardrail.is_circuit_open()
 
-def test_monitor_api_key():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    guardrail.monitor_api_key("key1")
-    assert guardrail.get_api_key_status("key1") == "active"
+def test_handle_request_rate_limited():
+    guardrail = Guardrail(threshold=1, cooldown=10, max_failures=3)
+    guardrail.handle_request(Request(time.time()))
+    exception = guardrail.handle_request(Request(time.time()))
+    assert exception is not None
+    assert str(exception) == "Rate limit exceeded"
 
-def test_get_api_key_status():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    assert guardrail.get_api_key_status("key1") == "protected"
-
-def test_to_json():
-    guardrail = Guardrail()
-    guardrail.register_api_key("key1", "AWS")
-    guardrail.register_api_key("key2", "GCP")
-    data = json.loads(guardrail.to_json())
-    assert len(data["api_keys"]) == 2
+def test_handle_request_circuit_open():
+    guardrail = Guardrail(threshold=1, cooldown=10, max_failures=3)
+    guardrail.circuit_open = True
+    exception = guardrail.handle_request(Request(time.time()))
+    assert exception is not None
+    assert str(exception) == "Circuit is open"
